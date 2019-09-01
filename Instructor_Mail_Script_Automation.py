@@ -12,9 +12,25 @@ EDU_SECTION_COLUMN = 'A'
 EDU_COLUMN = 'B'
 EDU_ROOM_COLUMN = 'C'
 CHANGED_EDU_ROOM_COLUMN = 'D'
+TIME_COLUMN = 'J'
 
 GREETING_START_CELL_NUM = 'B5'
 GREETING_END_CELL_NUM = 'B6'
+
+# 파일로 받아오기
+DETAILED_EDU_TIME = {
+    "7": ["09:30 ~ 17:30"],
+    "7-7": ["09:30 ~ 17:30", "09:30 ~ 17:30"],
+    "7-7-4": ["09:30 ~ 17:30", "09:30 ~ 17:30", "09:00 ~ 13:00"],
+    "4-7-7": ["14:00 ~ 18:00", "09:30 ~ 17:30", "09:30 ~ 17:30"],
+    "6-6-6": ["10:00 ~ 17:00", "10:00 ~ 17:00", "10:00 ~ 17:00"],
+    "7-7-7": ["09:30 ~ 17:30", "09:30 ~ 17:30", "09:30 ~ 17:30"],
+    "7-7-7-7": ["09:30 ~ 17:30", "09:30 ~ 17:30", "09:30 ~ 17:30", "09:30 ~ 17:30"],
+    "8-8-4": ["09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 13:00"],
+    "4-8-8": ["14:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00"],
+    "8-8-8-8-8": ["09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00"]
+    }
+
 
 
 def open_from_excel(fileName):
@@ -37,7 +53,8 @@ df.to_excel(OUTPUT_SCRIPT_FILE)
 
 schedule_workbook = open_from_excel(SCHEDULE_FILE)
 # 현재 월에 해당하는 sheet 불러오기
-current_month = str(datetime.now().month) + '월'
+# current_month = str(datetime.now().month) + '월' ##########HERE IS TO CHANGE!!
+current_month = '8월'
 wb = schedule_workbook[current_month]
 
 
@@ -211,6 +228,54 @@ def append_full_edu_date_in_df_scripts():
 append_full_edu_date_in_df_scripts()
 print(df_scripts)
 
+
+
+# 강의 시간 구하기
+def append_edu_time_in_df_scripts():
+    ''' 1. 첫 숫자를 가져온다.
+        2. 그 다음 문자가 '-'이면 다음 숫자까지 가져온다.
+        3. 그 다음 문자가 '-'가 아닐 때 까지 반복한다.
+    '''
+    edu_time = []
+    temp_list = []
+    for row_num in df_scripts['edu_row']:
+        time_strings = wb[TIME_COLUMN][row_num].value
+        string_index = 0
+        for index in range(len(time_strings)):
+            
+            # time으로만 이루어진 string의 마지막 index일 때
+            if index+1 == len(time_strings) and time_strings[index-1] == '-':
+                string_index = index
+                break
+            # time 이외의 문구가 있는 string의 마지막 index일 때
+            elif index+1 == len(time_strings) and time_strings[index-1] != '-':
+                continue
+            elif time_strings[index+1] == '-':
+                continue
+            elif time_strings[index] == '-':
+                continue
+            elif time_strings[index+1] != '-':
+                string_index = index
+                break
+        edu_time.append(time_strings[:string_index+1])
+    # 또 다른 함수로 빼기 #### RE
+    for time in edu_time:
+        detailed_edu_time = DETAILED_EDU_TIME[time]
+        temp_list.append(detailed_edu_time)
+    df_scripts['edu_time'] = temp_list  
+ 
+append_edu_time_in_df_scripts()
+print(df_scripts)
+
+
+
+'''
+1. 첫 숫자를 가져온다.
+2. 그 다음 문자가 '-'이면 다음 숫자까지 가져온다.
+3. 그 다음 문자가 '-'가 아닐 때 까지 반복한다.
+4. 최종 형태가 아래와 일치하면 시간을 가져 온다.
+
+'''
 
 '''
 1. 아래로는 날짜가 나오지 않을때까지 오른쪽으로는 n일 내에 시작할 과정이 있는 모든 행을 찾는다.
