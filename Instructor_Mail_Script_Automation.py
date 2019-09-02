@@ -199,12 +199,14 @@ def append_instructors_in_df_scripts():
         instructors_in_one_edu = []
         for column in weekday_columns:
             if wb[column][row_num].value != None:
-                instructors_in_one_edu.append(wb[column][row_num].value)
+                instructor = wb[column][row_num].value
+                # '/' 삭제
+                instructor = instructor.replace("/", "")
+                instructors_in_one_edu.append(instructor)
         temp_list.append(instructors_in_one_edu)
     df_scripts['instructors'] = temp_list
 
 append_instructors_in_df_scripts()
-print(df_scripts)
 
 def append_full_edu_date_in_df_scripts():
     temp_list = []
@@ -226,9 +228,6 @@ def append_full_edu_date_in_df_scripts():
     df_scripts['full_dates'] = temp_list
         
 append_full_edu_date_in_df_scripts()
-print(df_scripts)
-
-
 
 # 강의 시간 구하기
 def append_edu_time_in_df_scripts():
@@ -265,27 +264,29 @@ def append_edu_time_in_df_scripts():
     df_scripts['edu_time'] = temp_list  
  
 append_edu_time_in_df_scripts()
+# print(df_scripts)
+
+def append_detailed_date_time_instructor_in_df_scripts():
+    temp_list = []
+    for index, row in df_scripts.iterrows():
+        detailed_date_time_instructor = []
+        full_date = row['full_dates']
+        edu_time = row['edu_time']
+        instructors = row['instructors']
+        for index in range(len(full_date)):
+            detailed_date_time_instructor_scripts = full_date[index] + " " + edu_time[index] + " : " + instructors[index] +" 지도위원님"
+            detailed_date_time_instructor.append(detailed_date_time_instructor_scripts)
+        temp_list.append(detailed_date_time_instructor)
+    df_scripts['detailed_date_time_instructor'] = temp_list
+    
+append_detailed_date_time_instructor_in_df_scripts()
 print(df_scripts)
 
-
-
 '''
-1. 첫 숫자를 가져온다.
-2. 그 다음 문자가 '-'이면 다음 숫자까지 가져온다.
-3. 그 다음 문자가 '-'가 아닐 때 까지 반복한다.
-4. 최종 형태가 아래와 일치하면 시간을 가져 온다.
-
-'''
-
-'''
-1. 아래로는 날짜가 나오지 않을때까지 오른쪽으로는 n일 내에 시작할 과정이 있는 모든 행을 찾는다.
-2. 해당 행에서 나의 부문에 해당하는 행을 찾는다.
-3. 과정명, 강의실, 강사, 시간 등의 조합 알고리즘을 짠다
-
-  1. 과  정  명 : 서비스구매관리실무
-  2. 일       정 : 2019-08-28(수) ~ 08-29(목)
-  3. 강  의  실 : KPC 서울본부 307호 강의장
-  4. 준비 사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비해주시기 바랍니다.
+  1. 과정명 : 서비스구매관리실무
+  2. 일정 : 2019-08-28(수) ~ 08-29(목)
+  3. 강의실 : KPC 서울본부 307호 강의장
+  4. 준비사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비해주시기 바랍니다.
   5. 수강생명단 : 첨부파일 참조
   6. 전자식권 사용방법: 
      - '올리브식권' 앱 다운로드
