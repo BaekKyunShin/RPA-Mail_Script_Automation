@@ -282,16 +282,26 @@ def append_detailed_date_time_instructor_in_df_scripts():
 append_detailed_date_time_instructor_in_df_scripts()
 print(df_scripts)
 
-'''
-  1. 과정명 : 서비스구매관리실무
-  2. 일정 : 2019-08-28(수) ~ 08-29(목)
-  3. 강의실 : KPC 서울본부 307호 강의장
-  4. 준비사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비해주시기 바랍니다.
-  5. 수강생명단 : 첨부파일 참조
-  6. 전자식권 사용방법: 
-     - '올리브식권' 앱 다운로드
-     - 교육 당일에 ID: 휴대폰번호, PW: 휴대폰번호 뒷자리 4자로 로그인
-     - 가맹식당에서 식사 후 전자 식권 사용 (가맹식당 리스트는 어플에서 확인)
-4. 총 n개의 과정에 대한 메일 스크립트를 생성한다.
-'''
+def append_full_mail_script_in_df_scripts():
+    temp_list = []
+    for index, row in df_scripts.iterrows():
+        temp_string = ''
+        temp_string += '1. 과정명 : ' + row['edu_name'] + '\n'
+        temp_string += '2. 일정 : ' + row['full_dates'][0] + ' ~ ' + row['full_dates'][1] + '\n'
+        temp_string += '3. 강의시간: \n'
+        for detailed_date_time in row['detailed_date_time_instructor']:
+            temp_string += '  ' + detailed_date_time + '\n'
+        temp_string += '4. 강의실 : ' + row['edu_room'] + '\n'
+        temp_string += '5. 준비사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비헤주시기 바랍니다.\n'
+        temp_string += '6. 수강생명단 : 첨부파일 참조\n'
+        temp_string += '7. 전자식권 사용방법:\n'
+        temp_string += '  - "올리브식권" 앱 다운로드\n  - 교육 당일에 ID: 휴대폰번호, PW: 휴대폰번호 뒷자리 4자로 로그인\n  - 가맹식당에서 식사 후 전자 식권 사용 (가맹식당 리스트는 어플에서 확인)'
+        temp_list.append(temp_string)
+    df_scripts['full_mail_scripts'] = temp_list
+
+append_full_mail_script_in_df_scripts()
+print(df_scripts)
+
+for index, row in df_scripts.iterrows():
+    print(row['full_mail_scripts'])
 
