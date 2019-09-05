@@ -13,6 +13,7 @@ EDU_COLUMN = 'B'
 EDU_ROOM_COLUMN = 'C'
 CHANGED_EDU_ROOM_COLUMN = 'D'
 TIME_COLUMN = 'J'
+MONDAY_COLUMN = 'K'
 
 GREETING_START_CELL_NUM = 'B5'
 GREETING_END_CELL_NUM = 'B6'
@@ -81,7 +82,7 @@ week_start_row = current_date_cell.row
 
 END_ROW_VALUE = '강사별 투입일수("공우식", "공우식/", "/공우식", "공우식?", "공우식?/", "/공우식?" 까지만 인식)'
 
-def get_week_end_row():
+def get_week_end_row(current_date_cell):
     '''현재 row에 날짜가 있거나, 현재 row, K열에 END_ROW_VALUE가 있다면 바로 그 위 행이 week_end_row'''
     week_end_row = current_date_cell.row
     while True:
@@ -99,7 +100,8 @@ upcoming_edu_rows = []
 day_of_week_columns_index = day_of_week_columns.index(current_date_cell.column)
 day_of_week_columns_index_fixed = day_of_week_columns_index
 
-week_end_row = get_week_end_row()
+week_end_row = get_week_end_row(current_date_cell)
+
 def append_upcoming_edu_rows_in_edu_rows(week_start_row, week_end_row):
     global day_of_week_columns_index
     for row in range(week_start_row, week_end_row):
@@ -111,7 +113,13 @@ def append_upcoming_edu_rows_in_edu_rows(week_start_row, week_end_row):
                     break
             day_of_week_columns_index = day_of_week_columns_index_fixed
 
-append_upcoming_edu_rows_in_edu_rows(week_start_row, week_end_row)
+def append_next_week_upcoming_edu_rows_in_edu_rows(wb, next_week_row):
+    next_week_monday_cell = wb[MONDAY_COLUMN][next_week_row]
+    get_week_end_row(next_week_monday_cell)
+    
+    upcoming_edu_rows.append(row)
+    
+
 # 해당 행에서 나의 부문에 해당하는 행을 찾는다.
 def get_selected_edu_sections_row():
     selected_edu_sections_row = []
@@ -121,9 +129,7 @@ def get_selected_edu_sections_row():
     return selected_edu_sections_row
 
 # 3. 과정명, 강의실, 강사, 시간 등의 조합 알고리즘을 짠다
-selected_edu_sections_row = get_selected_edu_sections_row()
 
-df_scripts = pd.DataFrame()
 # 행
 def append_edu_row_in_df_scripts():
     temp_list = []
@@ -131,7 +137,7 @@ def append_edu_row_in_df_scripts():
         temp_list.append(row)
     df_scripts['edu_row'] = temp_list
 
-append_edu_row_in_df_scripts()
+
 
 # 과정명
 def append_edu_name_in_df_scripts():
@@ -140,7 +146,7 @@ def append_edu_name_in_df_scripts():
         temp_list.append(wb[EDU_COLUMN][row].value)
     df_scripts['edu_name'] = temp_list
 
-append_edu_name_in_df_scripts()
+
 
 # 강의실
 def append_edu_room_in_df_scripts():
@@ -158,7 +164,7 @@ def append_edu_room_in_df_scripts():
                 temp_list.append('KPC ' + wb[CHANGED_EDU_ROOM_COLUMN][row].value + ' 본부')
     df_scripts['edu_room'] = temp_list
 
-append_edu_room_in_df_scripts()
+
 
 # 일정 도출을 위한 시작날짜, 종료날짜 구하기
 def append_start_end_date_in_df_scripts():
@@ -189,7 +195,7 @@ def append_start_end_date_in_df_scripts():
     df_scripts['edu_start_date'] = temp_start_list
     df_scripts['edu_end_date'] = temp_end_list
 
-append_start_end_date_in_df_scripts()
+
 
 # 강사
 def append_instructors_in_df_scripts():
@@ -205,8 +211,6 @@ def append_instructors_in_df_scripts():
                 instructors_in_one_edu.append(instructor)
         temp_list.append(instructors_in_one_edu)
     df_scripts['instructors'] = temp_list
-
-append_instructors_in_df_scripts()
 
 def append_full_edu_date_in_df_scripts():
     temp_list = []
@@ -227,7 +231,7 @@ def append_full_edu_date_in_df_scripts():
         temp_list.append(full_dates)
     df_scripts['full_dates'] = temp_list
         
-append_full_edu_date_in_df_scripts()
+
 
 # 강의 시간 구하기
 def append_edu_time_in_df_scripts():
@@ -263,8 +267,16 @@ def append_edu_time_in_df_scripts():
         temp_list.append(detailed_edu_time)
     df_scripts['edu_time'] = temp_list  
  
-append_edu_time_in_df_scripts()
+
+
 # print(df_scripts)
+
+def has_only_one_instructor(instructor_list):
+    instructor_set = set(instructor_list)
+    if len(instructor_set) == 1:
+        return True
+    else:
+        return False
 
 def append_detailed_date_time_instructor_in_df_scripts():
     temp_list = []
@@ -274,13 +286,17 @@ def append_detailed_date_time_instructor_in_df_scripts():
         edu_time = row['edu_time']
         instructors = row['instructors']
         for index in range(len(full_date)):
-            detailed_date_time_instructor_scripts = full_date[index] + " " + edu_time[index] + " : " + instructors[index] +" 지도위원님"
+            if has_only_one_instructor(instructors):
+                detailed_date_time_instructor_scripts = full_date[index] + " " + edu_time[index]
+            else:
+                detailed_date_time_instructor_scripts = full_date[index] + " " + edu_time[index] + " : " + instructors[index] +" 지도위원님"
             detailed_date_time_instructor.append(detailed_date_time_instructor_scripts)
         temp_list.append(detailed_date_time_instructor)
     df_scripts['detailed_date_time_instructor'] = temp_list
-    
-append_detailed_date_time_instructor_in_df_scripts()
-print(df_scripts)
+
+
+
+# print(df_scripts)
 
 def append_full_mail_script_in_df_scripts():
     temp_list = []
@@ -291,17 +307,30 @@ def append_full_mail_script_in_df_scripts():
         temp_string += '3. 강의시간: \n'
         for detailed_date_time in row['detailed_date_time_instructor']:
             temp_string += '  ' + detailed_date_time + '\n'
-        temp_string += '4. 강의실 : ' + row['edu_room'] + '\n'
+        temp_string += '4. 강의장소 : ' + row['edu_room'] + '\n'
         temp_string += '5. 준비사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비헤주시기 바랍니다.\n'
         temp_string += '6. 수강생명단 : 첨부파일 참조\n'
-        temp_string += '7. 전자식권 사용방법:\n'
-        temp_string += '  - "올리브식권" 앱 다운로드\n  - 교육 당일에 ID: 휴대폰번호, PW: 휴대폰번호 뒷자리 4자로 로그인\n  - 가맹식당에서 식사 후 전자 식권 사용 (가맹식당 리스트는 어플에서 확인)'
         temp_list.append(temp_string)
     df_scripts['full_mail_scripts'] = temp_list
 
-append_full_mail_script_in_df_scripts()
-print(df_scripts)
 
-for index, row in df_scripts.iterrows():
-    print(row['full_mail_scripts'])
+
+if __name__ == "__main__":
+    append_upcoming_edu_rows_in_edu_rows(week_start_row, week_end_row)
+    selected_edu_sections_row = get_selected_edu_sections_row()
+
+    df_scripts = pd.DataFrame()
+
+    append_edu_row_in_df_scripts()
+    append_edu_name_in_df_scripts()
+    append_edu_room_in_df_scripts()
+    append_start_end_date_in_df_scripts()
+    append_instructors_in_df_scripts()
+    append_full_edu_date_in_df_scripts()
+    append_edu_time_in_df_scripts()
+    append_detailed_date_time_instructor_in_df_scripts()
+    append_full_mail_script_in_df_scripts()
+
+    for index, row in df_scripts.iterrows():
+        print(row['full_mail_scripts'])
 
