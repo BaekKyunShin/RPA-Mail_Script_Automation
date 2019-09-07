@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import openpyxl
 from datetime import datetime, timedelta
 
@@ -14,6 +15,7 @@ EDU_ROOM_COLUMN = 'C'
 CHANGED_EDU_ROOM_COLUMN = 'D'
 TIME_COLUMN = 'J'
 MONDAY_COLUMN = 'K'
+FIRST_WEEK_ROW = 4
 
 GREETING_START_CELL_NUM = 'B5'
 GREETING_END_CELL_NUM = 'B6'
@@ -32,6 +34,7 @@ DETAILED_EDU_TIME = {
     "7-7-7-7": ["09:30 ~ 17:30", "09:30 ~ 17:30", "09:30 ~ 17:30", "09:30 ~ 17:30"],
     "8-8-4": ["09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 13:00"],
     "4-8-8": ["14:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00"],
+    "8-8-8": ["09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00"],
     "8-8-8-8-8": ["09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00"]
     }
 
@@ -79,10 +82,7 @@ def get_week_end_row(wb, start_date_cell):
             break
     return week_end_row
 
-
-
 # 오른쪽으로는 시작할 과정이 있는 모든 행을 찾아 리스트에 담는다.
-
 
 def append_upcoming_edu_rows_in_edu_rows(wb, week_start_row, week_end_row):
     global day_of_week_columns_index
@@ -95,16 +95,37 @@ def append_upcoming_edu_rows_in_edu_rows(wb, week_start_row, week_end_row):
                     break
             day_of_week_columns_index = day_of_week_columns_index_fixed
 
-def get_next_week_row():
-    pass
+def get_next_week_wb(current_wb, week_end_row):
+    if type(current_wb[MONDAY_COLUMN][week_end_row+1].value) == datetime:
+        next_week_wb = current_wb
+    elif current_wb[MONDAY_COLUMN][week_end_row+1].value == END_ROW_VALUE:
+         current_wb_name = current_month
+         next_month = int(current_wb_name[0]) + 1
+         next_week_wb_name = str(next_month) + '월'
+         next_week_wb = schedule_workbook[next_week_wb_name]
+    return next_week_wb
 
-def append_next_week_upcoming_edu_rows_in_edu_rows(wb, next_week_row):
+def get_next_week_row(current_wb, week_end_row):
+    if type(current_wb[MONDAY_COLUMN][week_end_row+1].value) == datetime:
+        next_week_row = current_wb + 1
+    elif current_wb[MONDAY_COLUMN][week_end_row+1].value == END_ROW_VALUE:
+        next_week_row = FIRST_WEEK_ROW
+    return next_week_row
+
+def append_next_week_upcoming_edu_rows_in_edu_rows(next_week_wb, next_week_row):
+    weekday_columns = ['K', 'L', 'M', 'N', 'O']
     next_week_start_row = next_week_row
-    next_week_monday_cell = wb[MONDAY_COLUMN][next_week_row]
-    next_week_end_row = get_week_end_row(wb, next_week_monday_cell)
+    next_week_monday_cell = next_week_wb[MONDAY_COLUMN][next_week_row]
+    next_week_end_row = get_week_end_row(next_week_wb, next_week_monday_cell)
     for row in range(next_week_start_row, next_week_end_row):
-        upcoming_edu_rows.append((wb, row))
-    
+        have_to_append = False
+        # 만약 주중 강사가 없을 경우 append에서 제외시키는 조건 추가
+        for column in weekday_columns:
+            instructor = next_week_wb[column][row].value
+            if instructor != None:
+                have_to_append = True
+        if have_to_append:
+            upcoming_edu_rows.append((next_week_wb, row))
 
 # 해당 행에서 나의 부문에 해당하는 행을 찾는다.
 def get_selected_edu_sections_row():
@@ -138,7 +159,6 @@ def append_edu_name_in_df_scripts():
     df_scripts['edu_name'] = temp_list
 
 
-
 # 강의실
 def append_edu_room_in_df_scripts():
     temp_list = []
@@ -155,44 +175,55 @@ def append_edu_room_in_df_scripts():
                 temp_list.append('KPC ' + wb[CHANGED_EDU_ROOM_COLUMN][row].value + ' 본부')
     df_scripts['edu_room'] = temp_list
 
-
-
+def get_week_start_row(wb, row_num):
+    while type(wb[MONDAY_COLUMN][row_num].value) != datetime:
+        row_num -= 1
+    return row_num
+    
 # 일정 도출을 위한 시작날짜, 종료날짜 구하기
-def append_start_end_date_in_df_scripts(wb):
+def append_start_end_date_in_df_scripts():
     temp_start_list = []
     temp_end_list = []
     weekday_columns = ['K', 'L', 'M', 'N', 'O']
-    for row_num in df_scripts['edu_row']:
+    for index, row in df_scripts.iterrows():
         find_edu_start_date = False
         find_edu_end_date = False
+        row_num = row['edu_row']
+        wb = row['work_book']
+        week_start_row = get_week_start_row(wb, row_num)
         for column in weekday_columns:
             # 교육 시작일 찾기
             if wb[column][row_num].value != None and find_edu_start_date == False:
-                edu_start_date = wb[column][week_start_row-1].value
+                # print("교육시작")
+                edu_start_date = wb[column][week_start_row].value
                 find_edu_start_date = True
                 temp_start_list.append(edu_start_date)
             # 교육 종료일 찾기
             elif wb[column][row_num].value == None and find_edu_end_date == False and find_edu_start_date == True:
+                # print("교육종료1")
                 # 빈 셀의 바로 왼쪽이 교육 종료일
                 edu_end_column = weekday_columns[weekday_columns.index(column)-1]
-                edu_end_date = wb[edu_end_column][week_start_row-1].value
+                edu_end_date = wb[edu_end_column][week_start_row].value
                 find_edu_end_date = True
                 temp_end_list.append(edu_end_date)
             # 종료일이 금요일인 경우
             elif wb[column][row_num].value != None and find_edu_end_date == False and find_edu_start_date == True and column == 'O':
-                edu_end_date = wb[column][week_start_row-1].value
+                # print("금요일종료")
+                edu_end_date = wb[column][week_start_row].value
                 find_edu_end_date = True
                 temp_end_list.append(edu_end_date)
+    # print(temp_start_list)
     df_scripts['edu_start_date'] = temp_start_list
     df_scripts['edu_end_date'] = temp_end_list
 
 
-
 # 강사
-def append_instructors_in_df_scripts(wb):
+def append_instructors_in_df_scripts():
     temp_list = []
     weekday_columns = ['K', 'L', 'M', 'N', 'O']
-    for row_num in df_scripts['edu_row']:
+    for index, row in df_scripts.iterrows():
+        row_num = row['edu_row']
+        wb = row['work_book']
         instructors_in_one_edu = []
         for column in weekday_columns:
             if wb[column][row_num].value != None:
@@ -208,6 +239,7 @@ def append_full_edu_date_in_df_scripts():
     weekday_dict = {0: '월', 1: '화', 2: '수', 3: '목', 4: '금', 5: '토', 6: '일'}
     for index, row in df_scripts.iterrows():
         full_dates = []
+        # print(type(row['edu_end_date']))
         date_difference = (row['edu_end_date']-row['edu_start_date']).days + 1
         edu_date = row['edu_start_date']
         # 시작일부터 종료일까지 full_date 형식으로 저장
@@ -221,18 +253,19 @@ def append_full_edu_date_in_df_scripts():
             edu_date = edu_date + timedelta(days=1)
         temp_list.append(full_dates)
     df_scripts['full_dates'] = temp_list
-        
 
 
 # 강의 시간 구하기
-def append_edu_time_in_df_scripts(wb):
+def append_edu_time_in_df_scripts():
     ''' 1. 첫 숫자를 가져온다.
         2. 그 다음 문자가 '-'이면 다음 숫자까지 가져온다.
         3. 그 다음 문자가 '-'가 아닐 때 까지 반복한다.
     '''
     edu_time = []
     temp_list = []
-    for row_num in df_scripts['edu_row']:
+    for index, row in df_scripts.iterrows():
+        row_num = row['edu_row']
+        wb = row['work_book']
         time_strings = wb[TIME_COLUMN][row_num].value
         string_index = 0
         for index in range(len(time_strings)):
@@ -258,7 +291,6 @@ def append_edu_time_in_df_scripts(wb):
         temp_list.append(detailed_edu_time)
     df_scripts['edu_time'] = temp_list  
  
-
 
 # print(df_scripts)
 
@@ -286,7 +318,6 @@ def append_detailed_date_time_instructor_in_df_scripts():
     df_scripts['detailed_date_time_instructor'] = temp_list
 
 
-
 # print(df_scripts)
 
 def append_full_mail_script_in_df_scripts():
@@ -294,7 +325,7 @@ def append_full_mail_script_in_df_scripts():
     for index, row in df_scripts.iterrows():
         temp_string = ''
         temp_string += '1. 과정명 : ' + row['edu_name'] + '\n'
-        temp_string += '2. 일정 : ' + row['full_dates'][0] + ' ~ ' + row['full_dates'][1] + '\n'
+        temp_string += '2. 일정 : ' + row['full_dates'][0] + ' ~ ' + row['full_dates'][-1] + '\n'
         temp_string += '3. 강의시간: \n'
         for detailed_date_time in row['detailed_date_time_instructor']:
             temp_string += '  ' + detailed_date_time + '\n'
@@ -327,20 +358,25 @@ if __name__ == "__main__":
 
     append_upcoming_edu_rows_in_edu_rows(wb, week_start_row, week_end_row)
 
-    # next_week_row = get_next_week_row()
-    # append_next_week_upcoming_edu_rows_in_edu_rows(wb, next_week_row)
+    next_week_wb = get_next_week_wb(wb, week_end_row)
+    next_week_row = get_next_week_row(wb, week_end_row)
+    append_next_week_upcoming_edu_rows_in_edu_rows(next_week_wb, next_week_row)
     
     selected_edu_sections_row = get_selected_edu_sections_row()
 
     df_scripts = pd.DataFrame()
 
+    append_wb_in_df_scripts()
     append_edu_row_in_df_scripts()
     append_edu_name_in_df_scripts()
     append_edu_room_in_df_scripts()
-    append_start_end_date_in_df_scripts(wb)
-    append_instructors_in_df_scripts(wb)
-    append_full_edu_date_in_df_scripts()
-    append_edu_time_in_df_scripts(wb)
+
+    append_start_end_date_in_df_scripts()
+
+    append_instructors_in_df_scripts()
+    append_full_edu_date_in_df_scripts()   
+    print(df_scripts) 
+    append_edu_time_in_df_scripts()
     append_detailed_date_time_instructor_in_df_scripts()
     append_full_mail_script_in_df_scripts()
 
