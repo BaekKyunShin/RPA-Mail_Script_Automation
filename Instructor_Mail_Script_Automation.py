@@ -53,11 +53,6 @@ greeting_start = input_para_workbook[GREETING_START_CELL_NUM].value
 greeting_end = input_para_workbook[GREETING_END_CELL_NUM].value
 
 
-###### output file 저장하는 부분 ####### 수정 필요!
-df = pd.DataFrame(data={'col1': greeting_start, 'col2': greeting_end}, index=[1])
-df.to_excel(OUTPUT_SCRIPT_FILE)
-
-
 # 오늘 날짜에 해당하는 셀 번호 구하기
 def get_today_cell_num(wb):
     for row in wb:
@@ -107,7 +102,7 @@ def get_next_week_wb(current_wb, week_end_row):
 
 def get_next_week_row(current_wb, week_end_row):
     if type(current_wb[MONDAY_COLUMN][week_end_row+1].value) == datetime:
-        next_week_row = current_wb + 1
+        next_week_row = week_end_row + 1
     elif current_wb[MONDAY_COLUMN][week_end_row+1].value == END_ROW_VALUE:
         next_week_row = FIRST_WEEK_ROW
     return next_week_row
@@ -323,30 +318,30 @@ def append_detailed_date_time_instructor_in_df_scripts():
 def append_full_mail_script_in_df_scripts():
     temp_list = []
     for index, row in df_scripts.iterrows():
-        temp_string = ''
+        temp_string = greeting_start +'\n\n'
         temp_string += '1. 과정명 : ' + row['edu_name'] + '\n'
         temp_string += '2. 일정 : ' + row['full_dates'][0] + ' ~ ' + row['full_dates'][-1] + '\n'
-        temp_string += '3. 강의시간: \n'
+        temp_string += '3. 강의장소 : ' + row['edu_room'] + '\n'
+        temp_string += '4. 강의시간: \n'
         for detailed_date_time in row['detailed_date_time_instructor']:
             temp_string += '  ' + detailed_date_time + '\n'
-        temp_string += '4. 강의장소 : ' + row['edu_room'] + '\n'
         temp_string += '5. 준비사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비헤주시기 바랍니다.\n'
-        temp_string += '6. 수강생명단 : 첨부파일 참조\n'
+        temp_string += '6. 수강생명단 : 첨부파일 참조\n\n'
+        temp_string += greeting_end
         temp_list.append(temp_string)
     df_scripts['full_mail_scripts'] = temp_list
-
 
 
 if __name__ == "__main__":
     schedule_workbook = open_from_excel(SCHEDULE_FILE)
     # 현재 월에 해당하는 sheet 불러오기
-    # current_month = str(datetime.now().month) + '월' ##########HERE IS TO CHANGE!!
-    current_month = '8월'
+    current_month = str(datetime.now().month) + '월'
+    # current_month = '8월'
     wb = schedule_workbook[current_month]
 
     # 이번주 과정의 행 시작과 끝 구하기
-    # current_date_cell = get_today_cell_num(wb)
-    current_date_cell = wb['L50']
+    current_date_cell = get_today_cell_num(wb)
+    # current_date_cell = wb['L50']
     week_start_row = current_date_cell.row
 
     upcoming_edu_rows = []
@@ -375,7 +370,6 @@ if __name__ == "__main__":
 
     append_instructors_in_df_scripts()
     append_full_edu_date_in_df_scripts()   
-    print(df_scripts) 
     append_edu_time_in_df_scripts()
     append_detailed_date_time_instructor_in_df_scripts()
     append_full_mail_script_in_df_scripts()
@@ -383,3 +377,5 @@ if __name__ == "__main__":
     for index, row in df_scripts.iterrows():
         print(row['full_mail_scripts'])
 
+    # output 파일로 저장
+    df_scripts['full_mail_scripts'].to_excel(OUTPUT_SCRIPT_FILE)
