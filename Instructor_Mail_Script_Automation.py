@@ -2,13 +2,25 @@ import pandas as pd
 import numpy as np
 import openpyxl
 from datetime import datetime, timedelta
+from openpyxl.styles import Alignment, Font
 
-# input, output, source 파일 세팅
-SCHEDULE_FILE = '2019일정계획표(2019.08.02).xlsx'
+
+def open_from_excel(fileName):
+    workbook = openpyxl.load_workbook(fileName)
+    return workbook
+
+# input, output 파일 세팅
 INPUT_PARA_FILE = 'input_parameters.xlsx'
 OUTPUT_SCRIPT_FILE = 'mail_script.xlsx'
 
-EDU_SECTION_CELL_NUM = 'B4'
+input_para_workbook = open_from_excel(INPUT_PARA_FILE)
+input_para_workbook = input_para_workbook['스크립트']
+
+EDU_SECTION = input_para_workbook['B4'].value
+GREETING_START = input_para_workbook['B5'].value
+GREETING_END = input_para_workbook['B6'].value
+SCHEDULE_FILE = input_para_workbook['B7'].value
+
 EDU_SECTION_COLUMN = 'A'
 EDU_COLUMN = 'B'
 EDU_ROOM_COLUMN = 'C'
@@ -16,9 +28,6 @@ CHANGED_EDU_ROOM_COLUMN = 'D'
 TIME_COLUMN = 'J'
 MONDAY_COLUMN = 'K'
 FIRST_WEEK_ROW = 4
-
-GREETING_START_CELL_NUM = 'B5'
-GREETING_END_CELL_NUM = 'B6'
 
 END_ROW_VALUE = '강사별 투입일수("공우식", "공우식/", "/공우식", "공우식?", "공우식?/", "/공우식?" 까지만 인식)'
 day_of_week_columns = ['K', 'L', 'M', 'N', 'O', 'P', 'Q']
@@ -38,19 +47,6 @@ DETAILED_EDU_TIME = {
     "8-8-8-8-8": ["09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00", "09:00 ~ 18:00"]
     }
 
-
-
-def open_from_excel(fileName):
-    workbook = openpyxl.load_workbook(fileName)
-    return workbook
-
-# schedule_workbook = open_from_excel(SCHEDULE_FILE)
-input_para_workbook = open_from_excel(INPUT_PARA_FILE)
-input_para_workbook = input_para_workbook['Sheet1']
-
-edu_section = input_para_workbook[EDU_SECTION_CELL_NUM].value
-greeting_start = input_para_workbook[GREETING_START_CELL_NUM].value
-greeting_end = input_para_workbook[GREETING_END_CELL_NUM].value
 
 
 # 오늘 날짜에 해당하는 셀 번호 구하기
@@ -126,7 +122,7 @@ def append_next_week_upcoming_edu_rows_in_edu_rows(next_week_wb, next_week_row):
 def get_selected_edu_sections_row():
     selected_edu_sections_row = []
     for wb, row in upcoming_edu_rows:
-        if wb[EDU_SECTION_COLUMN][row].value == edu_section:
+        if wb[EDU_SECTION_COLUMN][row].value == EDU_SECTION:
             selected_edu_sections_row.append((wb, row))
     return selected_edu_sections_row
 
@@ -318,7 +314,7 @@ def append_detailed_date_time_instructor_in_df_scripts():
 def append_full_mail_script_in_df_scripts():
     temp_list = []
     for index, row in df_scripts.iterrows():
-        temp_string = greeting_start +'\n\n'
+        temp_string = GREETING_START +'\n\n'
         temp_string += '1. 과정명 : ' + row['edu_name'] + '\n'
         temp_string += '2. 일정 : ' + row['full_dates'][0] + ' ~ ' + row['full_dates'][-1] + '\n'
         temp_string += '3. 강의장소 : ' + row['edu_room'] + '\n'
@@ -327,7 +323,7 @@ def append_full_mail_script_in_df_scripts():
             temp_string += '  ' + detailed_date_time + '\n'
         temp_string += '5. 준비사항 : 교안 파일 및 참고 자료는 USB에 담아서 준비헤주시기 바랍니다.\n'
         temp_string += '6. 수강생명단 : 첨부파일 참조\n\n'
-        temp_string += greeting_end
+        temp_string += GREETING_END
         temp_list.append(temp_string)
     df_scripts['full_mail_scripts'] = temp_list
 
@@ -377,5 +373,26 @@ if __name__ == "__main__":
     for index, row in df_scripts.iterrows():
         print(row['full_mail_scripts'])
 
+
     # output 파일로 저장
     df_scripts['full_mail_scripts'].to_excel(OUTPUT_SCRIPT_FILE)
+    
+    # sciprts 파일 셀 조정    
+    mail_scripts_workbook = open_from_excel('mail_script.xlsx')
+    mail_scripts_worksheet = mail_scripts_workbook['Sheet1']
+    mail_scripts_worksheet.column_dimensions['B'].width = 70
+
+
+
+    row_count = 1
+    # 함수로 묶기
+    cell_num = 'B' + str(row_count)
+    while mail_scripts_worksheet[cell_num].value != None:
+        mail_scripts_worksheet[cell_num].alignment = Alignment(horizontal='justify', wrap_text=True)
+        mail_scripts_worksheet[cell_num].font = Font(name='맑은 고딕', size=10)
+        row_count += 1
+        cell_num = 'B' + str(row_count)
+    
+    for i in range(mail_scripts_worksheet.max_row):
+        mail_scripts_worksheet.row_dimensions[i+1].height = 70
+    mail_scripts_workbook.save("mail_script.xlsx")
