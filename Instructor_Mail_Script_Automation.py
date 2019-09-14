@@ -394,3 +394,5 @@ if __name__ == "__main__":
     df_scripts['full_mail_scripts'].to_excel(OUTPUT_SCRIPT_FILE)
     
     adjust_mail_sciprts_cell_attributes()
+
+    # 남은 일: outputfile에 과정 추가

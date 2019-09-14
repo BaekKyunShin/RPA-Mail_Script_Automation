@@ -21,7 +21,7 @@ pyinstaller: 실행 파일 제작을 위해
 아래 코드로 실행 파일 생성
 
 ```
-pyinstaller --onefile exepractice <your_python_file_name.py>
+pyinstaller --onefile <your_python_file_name.py>
 ```
 
 ### Input
